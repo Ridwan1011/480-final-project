@@ -1,795 +1,525 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nosh Navigator - Find Food That Matches Your Cravings</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        emerald: '#10B981',
-                        lime: '#84CC16',
-                        amber: '#F59E0B',
-                        slate: '#111827'
-                    },
-                    fontFamily: {
-                        'poppins': ['Poppins', 'sans-serif'],
-                        'inter': ['Inter', 'sans-serif']
-                    }
-                }
-            }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nosh Navigator - Find Food That Matches Your Cravings</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+  <!-- Tailwind Config + CDN -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: '#10B981',
+            lime: '#84CC16',
+            amber: '#F59E0B',
+            slate: '#111827'
+          },
+          fontFamily: {
+            'poppins': ['Poppins', 'sans-serif'],
+            'inter': ['Inter', 'sans-serif']
+          }
         }
-    </script>
-    <style>
-        .shadow-soft { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .shadow-soft-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .animate-bounce-slow { animation: bounce 2s infinite; }
-        .animate-pulse-soft { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .chatbot-bubble { animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .page { display: none; }
-        .page.active { display: block; }
-        .toast { animation: slideInRight 0.3s ease-out; }
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    </style>
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="./style.css" />
 </head>
+
 <body class="bg-white font-inter text-slate">
-    <!-- Navigation Header -->
-    <nav class="bg-white shadow-soft sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
-                    <svg width="32" height="32" viewBox="0 0 48 48" class="text-emerald">
-                        <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
-                        <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
-                        <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-                        <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span class="font-poppins text-xl font-bold text-slate">Nosh Navigator</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <button onclick="showPage('deals')" class="text-slate hover:text-emerald transition-colors font-medium">Deals</button>
-                    <button onclick="showPage('cart')" class="relative text-slate hover:text-emerald transition-colors">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="8" cy="21" r="1"/>
-                            <circle cx="19" cy="21" r="1"/>
-                            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-                        </svg>
-                        <span id="cartCount" class="absolute -top-2 -right-2 bg-emerald text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">0</span>
-                    </button>
-                </div>
-            </div>
+  <!-- Navigation Header -->
+  <nav class="bg-white shadow-soft sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
+          <svg width="32" height="32" viewBox="0 0 48 48" class="text-emerald">
+            <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
+            <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
+            <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
+            <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="font-poppins text-xl font-bold text-slate">Nosh Navigator</span>
         </div>
-    </nav>
-
-    <!-- Home Page -->
-    <div id="homePage" class="page active">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <!-- Hero Section -->
-            <div class="text-center mb-16">
-                <h1 class="font-poppins text-4xl md:text-6xl font-bold text-slate mb-6">
-                    Find food that matches<br>
-                    <span class="text-emerald">your cravings.</span>
-                </h1>
-                <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                    Discover amazing restaurants and dishes with our smart search. Just tell us what you're craving!
-                </p>
-                
-                <!-- Search Bar -->
-                <div class="max-w-2xl mx-auto mb-12">
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            placeholder="Try: 'cheap spicy noodles near me' or 'best pizza for delivery'"
-                            class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-all shadow-soft"
-                            id="searchInput"
-                        >
-                        <button onclick="performSearch()" class="absolute right-2 top-2 bg-emerald hover:bg-emerald/90 text-white p-3 rounded-xl transition-colors">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path d="M21 21l-4.35-4.35"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sign In/Register Form -->
-            <div class="max-w-md mx-auto bg-white rounded-2xl shadow-soft-lg p-8">
-                <div class="flex mb-6">
-                    <button id="signInTab" onclick="switchTab('signIn')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-emerald text-emerald">Sign In</button>
-                    <button id="registerTab" onclick="switchTab('register')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-gray-200 text-gray-500 hover:text-slate transition-colors">Register</button>
-                </div>
-
-                <!-- Sign In Form -->
-                <form id="signInForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Email</label>
-                        <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Password</label>
-                        <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <button type="button" onclick="signIn()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Sign In</button>
-                </form>
-
-                <!-- Register Form -->
-                <form id="registerForm" class="space-y-4 hidden">
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Full Name</label>
-                        <input type="text" placeholder="John Doe" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Email</label>
-                        <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Password</label>
-                        <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate mb-2">Delivery Address</label>
-                        <input type="text" placeholder="123 Main St, City, State" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-                    </div>
-                    <button type="button" onclick="register()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Create Account</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Deals Page -->
-    <div id="dealsPage" class="page">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Best Deals Near You</h1>
-            
-            <!-- Filter Bar -->
-            <div class="bg-white rounded-2xl shadow-soft p-6 mb-8">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-                        <option>All Cuisines</option>
-                        <option>Italian</option>
-                        <option>Asian</option>
-                        <option>Mexican</option>
-                        <option>American</option>
-                    </select>
-                    <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-                        <option>Any Budget</option>
-                        <option>$ Budget</option>
-                        <option>$$ Moderate</option>
-                        <option>$$$ Premium</option>
-                    </select>
-                    <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-                        <option>Any Distance</option>
-                        <option>Under 1 mile</option>
-                        <option>Under 3 miles</option>
-                        <option>Under 5 miles</option>
-                    </select>
-                    <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-                        <option>Sort by: Best Match</option>
-                        <option>Cheapest First</option>
-                        <option>Fastest Delivery</option>
-                        <option>Highest Rated</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Map Preview -->
-            <div class="bg-gradient-to-br from-emerald/20 to-lime/20 rounded-2xl p-8 mb-8 text-center">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald mx-auto mb-4">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                    <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <h3 class="font-poppins text-xl font-semibold text-slate mb-2">Interactive Map View</h3>
-                <p class="text-gray-600">See all restaurants on the map with real-time locations</p>
-                <button class="mt-4 bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-6 rounded-xl transition-colors">View Map</button>
-            </div>
-
-            <!-- Restaurant Cards Grid -->
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="restaurantGrid">
-                <!-- Restaurant Card 1 -->
-                <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
-                    <div class="h-48 bg-gradient-to-br from-red-400 to-orange-500 relative">
-                        <div class="absolute top-4 left-4">
-                            <span class="bg-amber text-white px-3 py-1 rounded-full text-sm font-medium">Deal</span>
-                        </div>
-                        <div class="absolute top-4 right-4">
-                            <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-start justify-between mb-3">
-                            <h3 class="font-poppins text-lg font-semibold text-slate">Mario's Pizzeria</h3>
-                            <span class="text-slate font-medium">$$</span>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Italian</span>
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Pizza</span>
-                            <span class="bg-lime/10 text-lime px-2 py-1 rounded-lg text-xs font-medium">Cheapest</span>
-                        </div>
-                        <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                </svg>
-                                <span class="font-medium">4.8</span>
-                                <span>(120+)</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12,6 12,12 16,14"/>
-                                </svg>
-                                <span>25-35 min</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                    <circle cx="12" cy="10" r="3"/>
-                                </svg>
-                                <span>0.8 mi</span>
-                            </div>
-                        </div>
-                        <button onclick="addToCart('Mario\'s Pizzeria', 'Margherita Pizza', 18.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
-                    </div>
-                </div>
-
-                <!-- Restaurant Card 2 -->
-                <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
-                    <div class="h-48 bg-gradient-to-br from-green-400 to-emerald relative">
-                        <div class="absolute top-4 left-4">
-                            <span class="bg-emerald text-white px-3 py-1 rounded-full text-sm font-medium">Highest Rated</span>
-                        </div>
-                        <div class="absolute top-4 right-4">
-                            <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-start justify-between mb-3">
-                            <h3 class="font-poppins text-lg font-semibold text-slate">Green Garden</h3>
-                            <span class="text-slate font-medium">$$$</span>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Healthy</span>
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Salads</span>
-                            <span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg text-xs font-medium">Closest</span>
-                        </div>
-                        <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                </svg>
-                                <span class="font-medium">4.9</span>
-                                <span>(89+)</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12,6 12,12 16,14"/>
-                                </svg>
-                                <span>15-25 min</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                    <circle cx="12" cy="10" r="3"/>
-                                </svg>
-                                <span>0.3 mi</span>
-                            </div>
-                        </div>
-                        <button onclick="addToCart('Green Garden', 'Caesar Salad', 14.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
-                    </div>
-                </div>
-
-                <!-- Restaurant Card 3 -->
-                <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
-                    <div class="h-48 bg-gradient-to-br from-yellow-400 to-amber relative">
-                        <div class="absolute top-4 left-4 flex gap-2">
-                            <span class="bg-amber text-white px-3 py-1 rounded-full text-sm font-medium">Deal</span>
-                            <span class="bg-lime/90 text-white px-3 py-1 rounded-full text-sm font-medium">Cheapest</span>
-                        </div>
-                        <div class="absolute top-4 right-4">
-                            <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex items-start justify-between mb-3">
-                            <h3 class="font-poppins text-lg font-semibold text-slate">Spice Route</h3>
-                            <span class="text-slate font-medium">$</span>
-                        </div>
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Indian</span>
-                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Spicy</span>
-                        </div>
-                        <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                </svg>
-                                <span class="font-medium">4.6</span>
-                                <span>(200+)</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12,6 12,12 16,14"/>
-                                </svg>
-                                <span>30-40 min</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                    <circle cx="12" cy="10" r="3"/>
-                                </svg>
-                                <span>1.2 mi</span>
-                            </div>
-                        </div>
-                        <button onclick="addToCart('Spice Route', 'Chicken Curry', 12.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cart Page -->
-    <div id="cartPage" class="page">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Your Order</h1>
-            
-            <div class="grid lg:grid-cols-3 gap-8">
-                <!-- Cart Items -->
-                <div class="lg:col-span-2">
-                    <!-- Address Card -->
-                    <div class="bg-white rounded-2xl shadow-soft p-6 mb-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-poppins text-lg font-semibold text-slate">Delivery Address</h3>
-                            <button class="text-emerald hover:text-emerald/80 font-medium transition-colors">Edit</button>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald mt-1">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
-                            </svg>
-                            <div>
-                                <p class="font-medium text-slate">123 Main Street</p>
-                                <p class="text-gray-600">Apartment 4B, San Francisco, CA 94102</p>
-                                <p class="text-sm text-gray-500 mt-1">Estimated delivery: 25-35 minutes</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Cart Items -->
-                    <div class="space-y-4" id="cartItems">
-                        <!-- Cart items will be populated by JavaScript -->
-                    </div>
-
-                    <!-- Empty Cart Message -->
-                    <div id="emptyCart" class="bg-white rounded-2xl shadow-soft p-12 text-center">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 mx-auto mb-4">
-                            <circle cx="8" cy="21" r="1"/>
-                            <circle cx="19" cy="21" r="1"/>
-                            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-                        </svg>
-                        <h3 class="font-poppins text-xl font-semibold text-slate mb-2">Your cart is empty</h3>
-                        <p class="text-gray-600 mb-6">Add some delicious items from our restaurants!</p>
-                        <button onclick="showPage('deals')" class="bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Browse Restaurants</button>
-                    </div>
-                </div>
-
-                <!-- Order Summary -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white rounded-2xl shadow-soft p-6 sticky top-24">
-                        <h3 class="font-poppins text-lg font-semibold text-slate mb-6">Order Summary</h3>
-                        
-                        <div class="space-y-3 mb-6">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Subtotal</span>
-                                <span id="subtotal">$0.00</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Delivery Fee</span>
-                                <span>$2.99</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Tax</span>
-                                <span id="tax">$0.00</span>
-                            </div>
-                            <hr class="border-gray-200">
-                            <div class="flex justify-between font-semibold text-lg">
-                                <span class="text-slate">Total</span>
-                                <span id="total" class="text-slate">$2.99</span>
-                            </div>
-                        </div>
-
-                        <button onclick="processPayment()" id="payButton" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-4 px-6 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                            Pay (Demo)
-                        </button>
-
-                        <p class="text-xs text-gray-500 text-center mt-3">This is a demo payment. No actual charges will be made.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Confirmation Page -->
-    <div id="confirmationPage" class="page">
-        <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-            <div class="bg-white rounded-2xl shadow-soft-lg p-12">
-                <!-- Success Animation -->
-                <div class="w-24 h-24 bg-emerald/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald animate-bounce-slow">
-                        <polyline points="20,6 9,17 4,12"/>
-                    </svg>
-                </div>
-                
-                <h1 class="font-poppins text-3xl font-bold text-slate mb-4">Order Confirmed!</h1>
-                <p class="text-gray-600 mb-6">Thank you for your order. We're preparing your delicious meal!</p>
-                
-                <div class="bg-gray-50 rounded-2xl p-6 mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="text-gray-600">Order Number</span>
-                        <span class="font-poppins font-semibold text-slate" id="orderNumber">#NS-2024-001</span>
-                    </div>
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="text-gray-600">Estimated Delivery</span>
-                        <span class="font-medium text-slate">25-35 minutes</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Total Paid</span>
-                        <span class="font-poppins font-bold text-emerald text-lg" id="paidAmount">$0.00</span>
-                    </div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <button onclick="trackOrder()" class="flex-1 border-2 border-emerald text-emerald hover:bg-emerald hover:text-white font-medium py-3 px-6 rounded-2xl transition-colors">Track Order</button>
-                    <button onclick="reorder()" class="flex-1 bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Re-order</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Chatbot -->
-    <div class="fixed bottom-6 right-6 z-50">
-        <button onclick="toggleChatbot()" class="bg-emerald hover:bg-emerald/90 text-white p-4 rounded-full shadow-soft-lg chatbot-bubble transition-colors">
-            <svg width="24" height="24" viewBox="0 0 48 48" class="text-white">
-                <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.2"/>
-                <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
-                <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-                <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <div class="flex items-center gap-4">
+          <button onclick="showPage('deals')" class="text-slate hover:text-emerald transition-colors font-medium">Deals</button>
+          <button onclick="showPage('cart')" class="relative text-slate hover:text-emerald transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="8" cy="21" r="1"/>
+              <circle cx="19" cy="21" r="1"/>
+              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
             </svg>
-        </button>
-        
-        <!-- Chatbot Bubble -->
-        <div id="chatbotBubble" class="absolute bottom-16 right-0 bg-white rounded-2xl shadow-soft-lg p-4 w-80 hidden">
-            <div class="flex items-start gap-3 mb-4">
-                <div class="w-8 h-8 bg-emerald rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg width="16" height="16" viewBox="0 0 48 48" class="text-white">
-                        <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="font-medium text-slate mb-1">Nosh Navigator Assistant</p>
-                    <p class="text-sm text-gray-600">Hi! I'm here to help you find the perfect meal. What are you craving today?</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="chatbotSuggest('pizza')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🍕 Pizza</button>
-                <button onclick="chatbotSuggest('healthy')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🥗 Healthy</button>
-                <button onclick="chatbotSuggest('deals')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">💰 Deals</button>
-            </div>
+            <span id="cartCount" class="absolute -top-2 -right-2 bg-emerald text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">0</span>
+          </button>
         </div>
+      </div>
     </div>
+  </nav>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
+  <!-- Home Page -->
+  <div id="homePage" class="page active">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <!-- Hero Section -->
+      <div class="text-center mb-16">
+        <h1 class="font-poppins text-4xl md:text-6xl font-bold text-slate mb-6">
+          Find food that matches<br>
+          <span class="text-emerald">your cravings.</span>
+        </h1>
+        <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Discover amazing restaurants and dishes with our smart search. Just tell us what you're craving!
+        </p>
+        <!-- Search Bar -->
+        <div class="max-w-2xl mx-auto mb-12">
+          <div class="relative">
+            <input 
+              type="text" 
+              placeholder="Try: 'cheap spicy noodles near me' or 'best pizza for delivery'"
+              class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-all shadow-soft"
+              id="searchInput"
+            >
+            <button onclick="performSearch()" class="absolute right-2 top-2 bg-emerald hover:bg-emerald/90 text-white p-3 rounded-xl transition-colors">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <script>
-        // Global state
-        let currentPage = 'home';
-        let cart = [];
-        let isSignedIn = false;
+      <!-- Sign In/Register Form -->
+      <div class="max-w-md mx-auto bg-white rounded-2xl shadow-soft-lg p-8">
+        <div class="flex mb-6">
+          <button id="signInTab" onclick="switchTab('signIn')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-emerald text-emerald">Sign In</button>
+          <button id="registerTab" onclick="switchTab('register')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-gray-200 text-gray-500 hover:text-slate transition-colors">Register</button>
+        </div>
 
-        // Page navigation
-        function showPage(page) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(page + 'Page').classList.add('active');
-            currentPage = page;
-            
-            if (page === 'cart') {
-                updateCartDisplay();
-            }
-        }
+        <!-- Sign In Form -->
+        <form id="signInForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Email</label>
+            <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Password</label>
+            <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <button type="button" onclick="signIn()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Sign In</button>
+        </form>
 
-        // Authentication
-        function switchTab(tab) {
-            const signInTab = document.getElementById('signInTab');
-            const registerTab = document.getElementById('registerTab');
-            const signInForm = document.getElementById('signInForm');
-            const registerForm = document.getElementById('registerForm');
+        <!-- Register Form -->
+        <form id="registerForm" class="space-y-4 hidden">
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Full Name</label>
+            <input type="text" placeholder="John Doe" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Email</label>
+            <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Password</label>
+            <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate mb-2">Delivery Address</label>
+            <input type="text" placeholder="123 Main St, City, State" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+          </div>
+          <button type="button" onclick="register()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
 
-            if (tab === 'signIn') {
-                signInTab.classList.add('border-emerald', 'text-emerald');
-                signInTab.classList.remove('border-gray-200', 'text-gray-500');
-                registerTab.classList.add('border-gray-200', 'text-gray-500');
-                registerTab.classList.remove('border-emerald', 'text-emerald');
-                signInForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-            } else {
-                registerTab.classList.add('border-emerald', 'text-emerald');
-                registerTab.classList.remove('border-gray-200', 'text-gray-500');
-                signInTab.classList.add('border-gray-200', 'text-gray-500');
-                signInTab.classList.remove('border-emerald', 'text-emerald');
-                registerForm.classList.remove('hidden');
-                signInForm.classList.add('hidden');
-            }
-        }
+  <!-- Deals Page -->
+  <div id="dealsPage" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Best Deals Near You</h1>
+      
+      <!-- Filter Bar -->
+      <div class="bg-white rounded-2xl shadow-soft p-6 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
+            <option>All Cuisines</option>
+            <option>Italian</option>
+            <option>Asian</option>
+            <option>Mexican</option>
+            <option>American</option>
+          </select>
+          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
+            <option>Any Budget</option>
+            <option>$ Budget</option>
+            <option>$$ Moderate</option>
+            <option>$$$ Premium</option>
+          </select>
+          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
+            <option>Any Distance</option>
+            <option>Under 1 mile</option>
+            <option>Under 3 miles</option>
+            <option>Under 5 miles</option>
+          </select>
+          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
+            <option>Sort by: Best Match</option>
+            <option>Cheapest First</option>
+            <option>Fastest Delivery</option>
+            <option>Highest Rated</option>
+          </select>
+        </div>
+      </div>
 
-        function signIn() {
-            isSignedIn = true;
-            showToast('success', 'Welcome back! You\'re now signed in.');
-            showPage('deals');
-        }
+      <!-- Location toolbar -->
+<div class="flex items-center justify-between mb-4">
+  <p class="text-gray-600 text-sm">Tip: enable location for closer results.</p>
+  <button id="useLocationBtn"
+    class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-2 px-4 rounded-xl transition-colors">
+    Use my location
+  </button>
+</div>
 
-        function register() {
-            isSignedIn = true;
-            showToast('success', 'Account created successfully! Welcome to Nosh Navigator.');
-            showPage('deals');
-        }
+<!-- Interactive Map -->
+<div id="map" class="rounded-2xl shadow-soft mb-8"></div>
 
-        // Search functionality
-        function performSearch() {
-            const query = document.getElementById('searchInput').value;
-            if (query.trim()) {
-                showToast('info', `Searching for "${query}"...`);
-                setTimeout(() => {
-                    showPage('deals');
-                    showToast('success', 'Found great matches for your search!');
-                }, 1000);
-            }
-        }
 
-        // Cart functionality
-        function addToCart(restaurant, item, price) {
-            const existingItem = cart.find(cartItem => 
-                cartItem.restaurant === restaurant && cartItem.item === item
-            );
+      <!-- Restaurant Cards Grid -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" id="restaurantGrid">
+        <!-- Card 1 -->
+        <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
+          <div class="h-48 bg-gradient-to-br from-red-400 to-orange-500 relative">
+            <div class="absolute top-4 left-4">
+              <span class="bg-amber text-white px-3 py-1 rounded-full text-sm font-medium">Deal</span>
+            </div>
+            <div class="absolute top-4 right-4">
+              <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-poppins text-lg font-semibold text-slate">Mario's Pizzeria</h3>
+              <span class="text-slate font-medium">$$</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Italian</span>
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Pizza</span>
+              <span class="bg-lime/10 text-lime px-2 py-1 rounded-lg text-xs font-medium">Cheapest</span>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span class="font-medium">4.8</span>
+                <span>(120+)</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                <span>25-35 min</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span>0.8 mi</span>
+              </div>
+            </div>
+            <button onclick="addToCart('Mario\\'s Pizzeria', 'Margherita Pizza', 18.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
+          </div>
+        </div>
 
-            if (existingItem) {
-                existingItem.quantity += 1;
-            } else {
-                cart.push({
-                    id: Date.now(),
-                    restaurant,
-                    item,
-                    price,
-                    quantity: 1
-                });
-            }
+        <!-- Card 2 -->
+        <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
+          <div class="h-48 bg-gradient-to-br from-green-400 to-emerald relative">
+            <div class="absolute top-4 left-4">
+              <span class="bg-emerald text-white px-3 py-1 rounded-full text-sm font-medium">Highest Rated</span>
+            </div>
+            <div class="absolute top-4 right-4">
+              <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-poppins text-lg font-semibold text-slate">Green Garden</h3>
+              <span class="text-slate font-medium">$$$</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Healthy</span>
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Salads</span>
+              <span class="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg text-xs font-medium">Closest</span>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span class="font-medium">4.9</span>
+                <span>(89+)</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                <span>15-25 min</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span>0.3 mi</span>
+              </div>
+            </div>
+            <button onclick="addToCart('Green Garden', 'Caesar Salad', 14.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
+          </div>
+        </div>
 
-            updateCartCount();
-            showToast('success', `${item} added to cart!`);
-        }
+        <!-- Card 3 -->
+        <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all cursor-pointer transform hover:-translate-y-1">
+          <div class="h-48 bg-gradient-to-br from-yellow-400 to-amber relative">
+            <div class="absolute top-4 left-4 flex gap-2">
+              <span class="bg-amber text-white px-3 py-1 rounded-full text-sm font-medium">Deal</span>
+              <span class="bg-lime/90 text-white px-3 py-1 rounded-full text-sm font-medium">Cheapest</span>
+            </div>
+            <div class="absolute top-4 right-4">
+              <button class="bg-white/20 backdrop-blur-sm text-white p-2 rounded-full hover:bg-white/30 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-poppins text-lg font-semibold text-slate">Spice Route</h3>
+              <span class="text-slate font-medium">$</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Indian</span>
+              <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs">Spicy</span>
+            </div>
+            <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-amber">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span class="font-medium">4.6</span>
+                <span>(200+)</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                <span>30-40 min</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span>1.2 mi</span>
+              </div>
+            </div>
+            <button onclick="addToCart('Spice Route', 'Chicken Curry', 12.99)" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">View Menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        function removeFromCart(id) {
-            cart = cart.filter(item => item.id !== id);
-            updateCartCount();
-            updateCartDisplay();
-            showToast('info', 'Item removed from cart');
-        }
+  <!-- Cart Page -->
+  <div id="cartPage" class="page">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Your Order</h1>
+      
+      <div class="grid lg:grid-cols-3 gap-8">
+        <!-- Cart Items -->
+        <div class="lg:col-span-2">
+          <!-- Address Card -->
+          <div class="bg-white rounded-2xl shadow-soft p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-poppins text-lg font-semibold text-slate">Delivery Address</h3>
+              <button class="text-emerald hover:text-emerald/80 font-medium transition-colors">Edit</button>
+            </div>
+            <div class="flex items-start gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald mt-1">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <div>
+                <p class="font-medium text-slate">123 Main Street</p>
+                <p class="text-gray-600">Apartment 4B, San Francisco, CA 94102</p>
+                <p class="text-sm text-gray-500 mt-1">Estimated delivery: 25-35 minutes</p>
+              </div>
+            </div>
+          </div>
 
-        function updateQuantity(id, change) {
-            const item = cart.find(cartItem => cartItem.id === id);
-            if (item) {
-                item.quantity += change;
-                if (item.quantity <= 0) {
-                    removeFromCart(id);
-                } else {
-                    updateCartCount();
-                    updateCartDisplay();
-                }
-            }
-        }
+          <!-- Cart Items -->
+          <div class="space-y-4" id="cartItems"></div>
 
-        function updateCartCount() {
-            const count = cart.reduce((total, item) => total + item.quantity, 0);
-            document.getElementById('cartCount').textContent = count;
-        }
+          <!-- Empty Cart Message -->
+          <div id="emptyCart" class="bg-white rounded-2xl shadow-soft p-12 text-center">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 mx-auto mb-4">
+              <circle cx="8" cy="21" r="1"/>
+              <circle cx="19" cy="21" r="1"/>
+              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+            </svg>
+            <h3 class="font-poppins text-xl font-semibold text-slate mb-2">Your cart is empty</h3>
+            <p class="text-gray-600 mb-6">Add some delicious items from our restaurants!</p>
+            <button onclick="showPage('deals')" class="bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Browse Restaurants</button>
+          </div>
+        </div>
 
-        function updateCartDisplay() {
-            const cartItems = document.getElementById('cartItems');
-            const emptyCart = document.getElementById('emptyCart');
-            const payButton = document.getElementById('payButton');
+        <!-- Order Summary -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-2xl shadow-soft p-6 sticky top-24">
+            <h3 class="font-poppins text-lg font-semibold text-slate mb-6">Order Summary</h3>
+            <div class="space-y-3 mb-6">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Subtotal</span>
+                <span id="subtotal">$0.00</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Delivery Fee</span>
+                <span>$2.99</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Tax</span>
+                <span id="tax">$0.00</span>
+              </div>
+              <hr class="border-gray-200">
+              <div class="flex justify-between font-semibold text-lg">
+                <span class="text-slate">Total</span>
+                <span id="total" class="text-slate">$2.99</span>
+              </div>
+            </div>
+            <button onclick="processPayment()" id="payButton" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-4 px-6 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              Pay (Demo)
+            </button>
+            <p class="text-xs text-gray-500 text-center mt-3">This is a demo payment. No actual charges will be made.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            if (cart.length === 0) {
-                cartItems.innerHTML = '';
-                emptyCart.style.display = 'block';
-                payButton.disabled = true;
-                updateOrderSummary(0);
-                return;
-            }
+  <!-- Confirmation Page -->
+  <div id="confirmationPage" class="page">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <div class="bg-white rounded-2xl shadow-soft-lg p-12">
+        <div class="w-24 h-24 bg-emerald/10 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald animate-bounce-slow">
+            <polyline points="20,6 9,17 4,12"/>
+          </svg>
+        </div>
+        <h1 class="font-poppins text-3xl font-bold text-slate mb-4">Order Confirmed!</h1>
+        <p class="text-gray-600 mb-6">Thank you for your order. We're preparing your delicious meal!</p>
+        <div class="bg-gray-50 rounded-2xl p-6 mb-8">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-gray-600">Order Number</span>
+            <span class="font-poppins font-semibold text-slate" id="orderNumber">#NS-2024-001</span>
+          </div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-gray-600">Estimated Delivery</span>
+            <span class="font-medium text-slate">25-35 minutes</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-600">Total Paid</span>
+            <span class="font-poppins font-bold text-emerald text-lg" id="paidAmount">$0.00</span>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-4">
+          <button onclick="trackOrder()" class="flex-1 border-2 border-emerald text-emerald hover:bg-emerald hover:text-white font-medium py-3 px-6 rounded-2xl transition-colors">Track Order</button>
+          <button onclick="reorder()" class="flex-1 bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Re-order</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            emptyCart.style.display = 'none';
-            payButton.disabled = false;
+  <!-- Chatbot -->
+  <div class="fixed bottom-6 right-6 z-50">
+    <button onclick="toggleChatbot()" class="bg-emerald hover:bg-emerald/90 text-white p-4 rounded-full shadow-soft-lg chatbot-bubble transition-colors">
+      <svg width="24" height="24" viewBox="0 0 48 48" class="text-white">
+        <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.2"/>
+        <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
+        <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
+        <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div id="chatbotBubble" class="absolute bottom-16 right-0 bg-white rounded-2xl shadow-soft-lg p-4 w-80 hidden">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-8 h-8 bg-emerald rounded-full flex items-center justify-center flex-shrink-0">
+          <svg width="16" height="16" viewBox="0 0 48 48" class="text-white">
+            <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <p class="font-medium text-slate mb-1">Nosh Navigator Assistant</p>
+          <p class="text-sm text-gray-600">Hi! I'm here to help you find the perfect meal. What are you craving today?</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="chatbotSuggest('pizza')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🍕 Pizza</button>
+        <button onclick="chatbotSuggest('healthy')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🥗 Healthy</button>
+        <button onclick="chatbotSuggest('deals')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">💰 Deals</button>
+      </div>
+    </div>
+  </div>
 
-            cartItems.innerHTML = cart.map(item => `
-                <div class="bg-white rounded-2xl shadow-soft p-6">
-                    <div class="flex items-start gap-4">
-                        <div class="w-20 h-20 bg-gradient-to-br from-emerald to-lime rounded-xl flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <h4 class="font-poppins font-semibold text-slate mb-1">${item.item}</h4>
-                            <p class="text-sm text-gray-600 mb-3">${item.restaurant}</p>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <line x1="5" y1="12" x2="19" y2="12"/>
-                                        </svg>
-                                    </button>
-                                    <span class="font-medium text-slate w-8 text-center">${item.quantity}</span>
-                                    <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <line x1="12" y1="5" x2="12" y2="19"/>
-                                            <line x1="5" y1="12" x2="19" y2="12"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="text-right">
-                                    <p class="font-poppins font-semibold text-slate">$${(item.price * item.quantity).toFixed(2)}</p>
-                                    <button onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-600 text-sm transition-colors">Remove</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
 
-            const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-            updateOrderSummary(subtotal);
-        }
+  <!-- Location toolbar -->
+<div class="flex items-center justify-between mb-4">
+  <p class="text-gray-600 text-sm">
+    Tip: enable location for closer results.
+  </p>
 
-        function updateOrderSummary(subtotal) {
-            const deliveryFee = subtotal > 0 ? 2.99 : 0;
-            const tax = subtotal * 0.08875; // 8.875% tax
-            const total = subtotal + deliveryFee + tax;
+  <!-- Location toolbar -->
+<div class="flex items-center justify-between mb-4">
+  <p class="text-gray-600 text-sm">Tip: enable location for closer results.</p>
+  <button id="useLocationBtn"
+    class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-2 px-4 rounded-xl transition-colors">
+    Use my location
+  </button>
+</div>
 
-            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
-            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
-        }
+<!-- Interactive Map -->
+<div id="map" class="rounded-2xl shadow-soft mb-8"></div>
 
-        function processPayment() {
-            if (cart.length === 0) return;
 
-            const total = parseFloat(document.getElementById('total').textContent.replace('$', ''));
-            
-            // Generate order number
-            const orderNumber = `#NS-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-            
-            document.getElementById('orderNumber').textContent = orderNumber;
-            document.getElementById('paidAmount').textContent = `$${total.toFixed(2)}`;
-            
-            // Clear cart
-            cart = [];
-            updateCartCount();
-            
-            showPage('confirmation');
-            showToast('success', 'Payment processed successfully!');
-        }
 
-        function trackOrder() {
-            showToast('info', 'Order tracking feature coming soon!');
-        }
-
-        function reorder() {
-            showPage('deals');
-            showToast('success', 'Browse our menu to place a new order!');
-        }
-
-        // Chatbot functionality
-        function toggleChatbot() {
-            const bubble = document.getElementById('chatbotBubble');
-            bubble.classList.toggle('hidden');
-        }
-
-        function chatbotSuggest(type) {
-            const suggestions = {
-                pizza: 'Great choice! I found Mario\'s Pizzeria with amazing deals on pizza.',
-                healthy: 'Perfect! Green Garden has the best healthy options nearby.',
-                deals: 'Awesome! Check out our deals page for the best offers today.'
-            };
-            
-            showToast('success', suggestions[type]);
-            
-            if (type === 'deals') {
-                showPage('deals');
-            }
-            
-            toggleChatbot();
-        }
-
-        // Toast notifications
-        function showToast(type, message) {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            const config = {
-                success: {
-                    bg: 'bg-emerald',
-                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>'
-                },
-                error: {
-                    bg: 'bg-red-500',
-                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
-                },
-                info: {
-                    bg: 'bg-blue-500',
-                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
-                }
-            };
-
-            const { bg, icon } = config[type];
-            
-            toast.className = `toast ${bg} text-white p-4 rounded-2xl shadow-soft-lg flex items-center gap-3 min-w-80 max-w-md`;
-            toast.innerHTML = `
-                ${icon}
-                <span class="font-medium flex-1">${message}</span>
-                <button onclick="this.parentElement.remove()" class="hover:opacity-70 transition-opacity">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            `;
-            
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 5000);
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            updateCartCount();
-            
-            // Add enter key support for search
-            document.getElementById('searchInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    performSearch();
-                }
-            });
-        });
-
-        // Close chatbot when clicking outside
-        document.addEventListener('click', function(e) {
-            const chatbot = document.getElementById('chatbotBubble');
-            const chatbotButton = chatbot.previousElementSibling;
-            
-            if (!chatbot.contains(e.target) && !chatbotButton.contains(e.target)) {
-                chatbot.classList.add('hidden');
-            }
-        });
-    </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97cc7cf0720b78d8',t:'MTc1NzQ4MTc1MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <!-- App JS -->
+  <script defer src="./app.js"></script>
+</body>
 </html>
