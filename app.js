@@ -438,20 +438,25 @@ function renderChat() {
   box.scrollTop = box.scrollHeight;
 }
 
-// Typewriter: types the reply into the placeholder one chunk at a time
+// Typewriter: keep dots visible, then type the reply
 let _typingRunId = 0;
-function typeReplyAt(index, reply, { msPerChar = 25, initialDelay = 300, chunk = 2 } = {}) {
+function typeReplyAt(index, reply, { msPerChar = 22, initialDelay = 600, chunk = 2 } = {}) {
+  // prepare safe HTML
   const full = escapeHtml(String(reply ?? '')).replace(/\n/g, '<br>');
   const runId = ++_typingRunId;
 
-  chatHistory[index] = { role: 'assistant', content: '' };
-  renderChat();
-
+  // IMPORTANT: do NOT clear the bubble yet — leave the dots showing
+  // We only start typing after the delay:
   setTimeout(() => {
-    if (runId !== _typingRunId) return;
+    if (runId !== _typingRunId) return; // canceled by newer send
+
+    // now replace the dots with an empty bubble and start typing
+    chatHistory[index] = { role: 'assistant', content: '' };
+    renderChat();
+
     let i = 0;
     const tick = () => {
-      if (runId !== _typingRunId) return;
+      if (runId !== _typingRunId) return; // canceled by newer send
       i = Math.min(i + chunk, full.length);
       chatHistory[index].content = full.slice(0, i);
       renderChat();
@@ -462,6 +467,7 @@ function typeReplyAt(index, reply, { msPerChar = 25, initialDelay = 300, chunk =
     tick();
   }, initialDelay);
 }
+
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, s => (
