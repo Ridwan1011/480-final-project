@@ -485,28 +485,24 @@ async function sendChatMessage() {
   input.value = '';
   renderChat();
   
-  const placeholderIndex = chatHistory.length;
-
   chatHistory.push({ 
     role: 'assistant', 
     content: '<span class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>' 
   });
+  const placeholderIndex = chatHistory.length - 1;
+
   renderChat();
 
   try {
     const reply = await Chat.process(text);
     typeReplyAt(placeholderIndex, reply, {
       msPerChar: 22,
-      initialDelay: 500,
+      initialDelay: 600,
       chunk: 2
     });
   } catch (e) {
+    chatHistory[placeholderIndex] = { role: 'assistant', content: "Sorry — I couldn't reply just now." };
     console.error(e);
-    typeReplyAt(placeholderIndex, "Sorry — I couldn't reply just now.", {
-      msPerChar: 18,
-      initialDelay: 300,
-      chunk: 2
-    });
   }
   renderChat();
 }
@@ -655,15 +651,23 @@ const Chat = {
 
 
 // ---------------- Chatbot ----------------
-function toggleChatbot() {
+function toggleChatbot(forceOpen) {
+  const widget = document.getElementById('chatWidget');
   const bubble = document.getElementById('chatbotBubble');
-  if (!bubble) return;
-  bubble.classList.toggle('hidden');
-  if (!bubble.classList.contains('hidden')) {
+  if (!widget || !bubble) return;
+
+  const willOpen = forceOpen !== undefined ? !!forceOpen : !widget.classList.contains('chat-open');
+  widget.classList.toggle('chat-open', willOpen);
+
+  // keep a11y in sync
+  bubble.setAttribute('aria-hidden', (!willOpen).toString());
+
+  if (willOpen) {
     renderChat();
     setTimeout(() => document.getElementById('chatInput')?.focus(), 0);
   }
 }
+
 
 function chatbotSuggest(type) {
   const suggestions = {
@@ -675,6 +679,11 @@ function chatbotSuggest(type) {
   showToast('success', suggestions[type] || 'Let’s explore!');
   if (type === 'deals') showPage('deals');
   toggleChatbot();
+}
+async function sendQuick(text) {
+  const input = document.getElementById('chatInput');
+  if (input) input.value = text;
+  await sendChatMessage();
 }
 
 // ---------------- Toasts ----------------
@@ -738,10 +747,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Close chatbot when clicking outside
   document.addEventListener('click', function (e) {
+    const widget = document.getElementById('chatWidget');
     const chatbot = document.getElementById('chatbotBubble');
-    const chatbotButton = chatbot?.previousElementSibling;
-    if (chatbot && chatbotButton && !chatbot.contains(e.target) && !chatbotButton.contains(e.target)) {
-      chatbot.classList.add('hidden');
+    const launcher = document.getElementById('chatLauncher');
+    if (!widget || !chatbot || !launcher) return;
+
+    const clickInsideBubble = chatbot.contains(e.target);
+    const clickOnLauncher   = launcher.contains(e.target);
+
+    if (!clickInsideBubble && !clickOnLauncher && widget.classList.contains('chat-open')) {
+      widget.classList.remove('chat-open');
+      chatbot.setAttribute('aria-hidden', 'true');
     }
   });
 
@@ -791,4 +807,5 @@ window.chatbotSuggest = chatbotSuggest;
 window.showToast = showToast;
 window.sendChatMessage = sendChatMessage;
 window.clearChat = clearChat;
+window.sendQuick = sendQuick;
 
