@@ -407,11 +407,256 @@ function reorder() {
   showPage('deals');
   showToast('success', 'Browse our menu to place a new order!');
 }
+// ===== Minimal Chatbot (fresh start) =====
+let chatHistory = [
+  { role: 'assistant', content: "Hi! I’m your assistant. Ask me anything, or say 'help'." }
+];
+
+function renderChat() {
+  const box = document.getElementById('chatMessages');
+  if (!box) return;
+
+  box.innerHTML = chatHistory.map(m => {
+    const isUser = m.role === 'user';
+    return `
+      <div class="flex ${isUser ? 'justify-end' : 'justify-start'} gap-2">
+        ${isUser ? '' : `
+          <div class="w-7 h-7 rounded-full bg-emerald/15 flex items-center justify-center flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 48 48" class="text-emerald">
+              <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
+            </svg>
+          </div>`}
+        <div class="${isUser ? 'chat-user' : 'chat-bot'} px-3 py-2 max-w-[80%]">
+          ${isUser ? escapeHtml(m.content) : m.content}
+        </div>
+        ${isUser ? `
+          <div class="w-7 h-7 rounded-full bg-emerald text-white flex items-center justify-center text-xs font-medium flex-shrink-0">U</div>
+        ` : ''}
+      </div>`;
+  }).join('');
+
+  box.scrollTop = box.scrollHeight;
+}
+
+// Typewriter: types the reply into the placeholder one chunk at a time
+let _typingRunId = 0;
+function typeReplyAt(index, reply, { msPerChar = 25, initialDelay = 300, chunk = 2 } = {}) {
+  const full = escapeHtml(String(reply ?? '')).replace(/\n/g, '<br>');
+  const runId = ++_typingRunId;
+
+  chatHistory[index] = { role: 'assistant', content: '' };
+  renderChat();
+
+  setTimeout(() => {
+    if (runId !== _typingRunId) return;
+    let i = 0;
+    const tick = () => {
+      if (runId !== _typingRunId) return;
+      i = Math.min(i + chunk, full.length);
+      chatHistory[index].content = full.slice(0, i);
+      renderChat();
+      if (i < full.length) {
+        setTimeout(tick, msPerChar * chunk);
+      }
+    };
+    tick();
+  }, initialDelay);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => (
+    { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]
+  ));
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const text = (input.value || '').trim();
+  if (!text) return;
+
+  chatHistory.push({ role: 'user', content: text });
+  input.value = '';
+  renderChat();
+  
+  const placeholderIndex = chatHistory.length;
+
+  chatHistory.push({ 
+    role: 'assistant', 
+    content: '<span class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>' 
+  });
+  renderChat();
+
+  try {
+    const reply = await Chat.process(text);
+    typeReplyAt(placeholderIndex, reply, {
+      msPerChar: 22,
+      initialDelay: 500,
+      chunk: 2
+    });
+  } catch (e) {
+    console.error(e);
+    typeReplyAt(placeholderIndex, "Sorry — I couldn't reply just now.", {
+      msPerChar: 18,
+      initialDelay: 300,
+      chunk: 2
+    });
+  }
+  renderChat();
+}
+function clearChat() {
+  chatHistory = [
+    { role: 'assistant', content: "Chat cleared 👌 What would you like to do next?" }
+  ];
+  renderChat();
+}
+
+
+// ===== Smart Chat: intent, entities, ranking, cart glue =====
+const Chat = {
+  lastResults: [],
+
+  async process(text) {
+    const q = text.trim();
+    const ql = q.toLowerCase();
+
+    // Clear chat
+    if (ql === 'clear' || ql === 'reset') {
+      clearChat();
+      return "I’ve cleared our conversation.";
+    }
+
+    // Help
+    if (/^(help|\?)\b|what can you do|how (to|do)\b/.test(ql)) {
+      return "I can search by cuisine (pizza, indian), price ($, $$, $$$ or 'cheap'), speed ('fastest'), and spicy. Try: ‘cheapest italian’, ‘fastest salad’, or ‘add #1’. Say ‘view cart’ anytime.";
+    }
+
+    // View cart
+    if (/(show|view|open).*(cart)/.test(ql)) {
+      showPage('cart');
+      return "Opened your cart.";
+    }
+
+    // Add to cart from chat: “add #1”, “add margherita from mario’s”
+    if (/(^|\b)(add|order|buy|put)\b/.test(ql)) {
+      const msg = this.tryAddFromText(ql);
+      return msg || "Tell me which item — e.g., ‘add Margherita from Mario’s’ or ‘add #1’.";
+    }
+
+    // Otherwise: search & recommend
+    const filters = this.parseFilters(ql);
+    const coords = getCachedLocation(); // already in your app:contentReference[oaicite:2]{index=2}
+    const ranked = this.search(filters, coords);
+    this.lastResults = ranked.map(x => x.r);
+
+    if (!ranked.length) return "I didn't find a great match. Try a different cuisine or budget.";
+
+    const lines = ranked.map((x, i) => {
+      const r = x.r;
+      const distTxt = x.distanceMi != null ? `${x.distanceMi.toFixed(x.distanceMi < 1 ? 2 : 1)} mi` : '—';
+      const [minEta, maxEta] = (r.eta || "").split('-');
+      return `${i + 1}) ${r.name} • ${r.cuisine.join(', ')} • ${r.priceLevel} • ⭐ ${r.rating} • ${minEta ?? ''}${maxEta ? '–' + maxEta : ''} min • ${distTxt}. Try their ${r.featuredItem.name} for $${r.featuredItem.price.toFixed(2)}.`;
+    });
+
+    lines.push("Type ‘add #1’ or ‘add Margherita from Mario’s’. Say ‘view cart’ anytime.");
+    return lines.join('\n');
+  },
+
+  parseFilters(q) {
+    // cuisines & traits
+    const CUIS = ['italian','pizza','indian','salad','healthy','spicy'];
+    const cuisines = CUIS.filter(c => q.includes(c));
+    const canon = cuisines.map(c => {
+      if (c === 'pizza') return 'Pizza';
+      if (c === 'italian') return 'Italian';
+      if (c === 'indian') return 'Indian';
+      if (c === 'salad' || c === 'healthy') return 'Healthy';
+      if (c === 'spicy') return 'Spicy';
+      return c;
+    });
+
+    // price
+    let price = null;
+    if (/\bcheap(est)?|\b\$\b/.test(q)) price = '$';
+    else if (/\bmoderate|\$\$\b/.test(q)) price = '$$';
+    else if (/\bpremium|expensive|\$\$\$\b/.test(q)) price = '$$$';
+
+    const fastest = /\bfast(est)?|quick(est)?\b/.test(q);
+    const spicy = /\bspicy|heat\b/.test(q);
+
+    return { cuisines: Array.from(new Set(canon)), price, fastest, spicy };
+  },
+
+  search(filters, coords) {
+    // Use your SEED_RESTAURANTS (already in file):contentReference[oaicite:3]{index=3}
+    let arr = SEED_RESTAURANTS.filter(r => {
+      const cuisineOk = !filters.cuisines.length || filters.cuisines.some(c => r.cuisine.map(x => x.toLowerCase()).includes(c.toLowerCase()));
+      const priceOk = !filters.price || r.priceLevel === filters.price;
+      const spicyOk = !filters.spicy || r.cuisine.includes('Spicy') || /spice/i.test(r.name);
+      return cuisineOk && priceOk && spicyOk;
+    }).map(r => {
+      const distanceMi = coords ? haversineMi(coords, { lat: r.lat, lng: r.lng }) : null; // haversineMi already in file:contentReference[oaicite:4]{index=4}
+      const etaMin = parseInt((r.eta || '').split('-')[0], 10) || 999;
+      return { r, distanceMi, etaMin, price: r.featuredItem.price };
+    });
+
+    // Sort strategy
+    if (filters.fastest) {
+      arr.sort((a, b) => a.etaMin - b.etaMin || b.r.rating - a.r.rating || (a.distanceMi ?? 99) - (b.distanceMi ?? 99));
+    } else if (filters.price === '$') {
+      arr.sort((a, b) => a.price - b.price || b.r.rating - a.r.rating || (a.distanceMi ?? 99) - (b.distanceMi ?? 99));
+    } else {
+      arr.sort((a, b) => b.r.rating - a.r.rating || (a.distanceMi ?? 99) - (b.distanceMi ?? 99));
+    }
+
+    return arr.slice(0, 3);
+  },
+
+  tryAddFromText(q) {
+    // “add #1/2/3”
+    const idx = q.match(/#?\b([1-3])\b/);
+    if (idx && this.lastResults[Number(idx[1]) - 1]) {
+      const r = this.lastResults[Number(idx[1]) - 1];
+      addToCart(r.name, r.featuredItem.name, r.featuredItem.price); // uses your cart code:contentReference[oaicite:5]{index=5}
+      return `Added ${r.featuredItem.name} from ${r.name} to your cart.`;
+    }
+
+    // by restaurant name (quick fuzzy-ish contains)
+    const byName = SEED_RESTAURANTS.find(r => q.includes(r.name.toLowerCase()));
+    if (byName) {
+      addToCart(byName.name, byName.featuredItem.name, byName.featuredItem.price);
+      return `Added ${byName.featuredItem.name} from ${byName.name} to your cart.`;
+    }
+
+    // by item keywords
+    if (/margherita|pizza/.test(q)) {
+      const r = SEED_RESTAURANTS.find(r => /pizzeria|pizza/i.test(r.name));
+      if (r) { addToCart(r.name, r.featuredItem.name, r.featuredItem.price); return `Added ${r.featuredItem.name} from ${r.name}.`; }
+    }
+    if (/salad|caesar/.test(q)) {
+      const r = SEED_RESTAURANTS.find(r => /garden/i.test(r.name));
+      if (r) { addToCart(r.name, r.featuredItem.name, r.featuredItem.price); return `Added ${r.featuredItem.name} from ${r.name}.`; }
+    }
+    if (/curry|chicken curry/.test(q)) {
+      const r = SEED_RESTAURANTS.find(r => /spice route/i.test(r.name));
+      if (r) { addToCart(r.name, r.featuredItem.name, r.featuredItem.price); return `Added ${r.featuredItem.name} from ${r.name}.`; }
+    }
+
+    return null;
+  }
+};
+
+
 
 // ---------------- Chatbot ----------------
 function toggleChatbot() {
   const bubble = document.getElementById('chatbotBubble');
-  if (bubble) bubble.classList.toggle('hidden');
+  if (!bubble) return;
+  bubble.classList.toggle('hidden');
+  if (!bubble.classList.contains('hidden')) {
+    renderChat();
+    setTimeout(() => document.getElementById('chatInput')?.focus(), 0);
+  }
 }
 
 function chatbotSuggest(type) {
@@ -494,6 +739,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // Chat: Enter-to-send
+  const chatInput = document.getElementById('chatInput');
+  if (chatInput) {
+    chatInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+  }
+
+  // Initial chat render (in case bubble is initially open)
+  renderChat();
+
   // "Use my location" button
   const useBtn = document.getElementById('useLocationBtn');
   if (useBtn) {
@@ -527,3 +783,6 @@ window.reorder = reorder;
 window.toggleChatbot = toggleChatbot;
 window.chatbotSuggest = chatbotSuggest;
 window.showToast = showToast;
+window.sendChatMessage = sendChatMessage;
+window.clearChat = clearChat;
+

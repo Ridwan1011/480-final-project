@@ -467,34 +467,61 @@
   </div>
 
   <!-- Chatbot -->
-  <div class="fixed bottom-6 right-6 z-50">
-    <button onclick="toggleChatbot()" class="bg-emerald hover:bg-emerald/90 text-white p-4 rounded-full shadow-soft-lg chatbot-bubble transition-colors">
-      <svg width="24" height="24" viewBox="0 0 48 48" class="text-white">
-        <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.2"/>
-        <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
-        <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-        <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </button>
-    <div id="chatbotBubble" class="absolute bottom-16 right-0 bg-white rounded-2xl shadow-soft-lg p-4 w-80 hidden">
-      <div class="flex items-start gap-3 mb-4">
-        <div class="w-8 h-8 bg-emerald rounded-full flex items-center justify-center flex-shrink-0">
-          <svg width="16" height="16" viewBox="0 0 48 48" class="text-white">
+<div class="fixed bottom-6 right-6 z-50">
+  <button onclick="toggleChatbot()" class="bg-emerald hover:bg-emerald/90 text-white p-4 rounded-full shadow-soft-lg chatbot-bubble transition-colors">
+    <svg width="24" height="24" viewBox="0 0 48 48" class="text-white">
+      <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.2"/>
+      <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
+      <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
+      <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div id="chatbotBubble" class="absolute bottom-16 right-0 bg-white rounded-2xl shadow-soft-lg w-[22rem] hidden overflow-hidden">
+    <!-- Header -->
+    <div class="px-4 py-3 bg-gradient-to-r from-emerald to-lime text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 48 48">
             <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
           </svg>
         </div>
         <div>
-          <p class="font-medium text-slate mb-1">Nosh Navigator Assistant</p>
-          <p class="text-sm text-gray-600">Hi! I'm here to help you find the perfect meal. What are you craving today?</p>
+          <p class="font-medium leading-tight">Nosh Navigator</p>
+          <p class="text-white/80 text-xs leading-tight">assistant online</p>
         </div>
       </div>
-      <div class="flex gap-2">
-        <button onclick="chatbotSuggest('pizza')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🍕 Pizza</button>
-        <button onclick="chatbotSuggest('healthy')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">🥗 Healthy</button>
-        <button onclick="chatbotSuggest('deals')" class="flex-1 bg-gray-100 hover:bg-emerald hover:text-white text-gray-700 py-2 px-3 rounded-xl text-sm transition-colors">💰 Deals</button>
+      <button onclick="toggleChatbot()" class="rounded-xl bg-white/10 hover:bg-white/20 transition-colors p-1.5">
+        <svg width="16" height="16" viewBox="0 0 24 24" class="text-white"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div id="chatMessages" class="h-72 overflow-y-auto px-3 py-3 space-y-2 custom-scrollbar bg-white"></div>
+
+    <!-- Quick chips -->
+    <div class="px-3 pb-2 flex flex-wrap gap-2">
+      <button class="chip" onclick="sendQuick('cheap pizza')">Cheap pizza</button>
+      <button class="chip" onclick="sendQuick('fastest salad')">Fastest salad</button>
+      <button class="chip" onclick="sendQuick('spicy indian')">Spicy Indian</button>
+      <button class="chip" onclick="sendQuick('view cart')">View cart</button>
+      <button class="chip" onclick="clearChat()">Clear</button>
+    </div>
+
+    <!-- Input -->
+    <div class="p-3 border-t border-gray-100 bg-white">
+      <div class="flex items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-emerald focus-within:border-emerald">
+        <input id="chatInput" type="text" placeholder="Ask about deals, pizza, etc…"
+          class="flex-1 outline-none bg-transparent text-slate placeholder:text-gray-400"/>
+        <button id="chatSendBtn" class="send-btn" onclick="sendChatMessage()">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        </button>
       </div>
     </div>
   </div>
+</div>
+
+
 
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
