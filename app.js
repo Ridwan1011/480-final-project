@@ -521,6 +521,10 @@ const Chat = {
   async process(text) {
     const q = text.trim();
     const ql = q.toLowerCase();
+    // Treat very short follow-ups as food if the previous assistant reply looked food-related
+    const prev = chatHistory.slice().reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
+    const followUpLooksFoody = /\b(recipe|ingredients|bowl|rice|cook|prepare|steps|salad|pizza|curry|tofu|sauce)\b/.test(prev);
+
 
     // Greeting: respond with quick help, don't search
     if (/^(hi|hello|hey|yo|sup|howdy)\b/.test(ql)) {
@@ -531,10 +535,12 @@ const Chat = {
       'food','eat','restaurant','order','cart','menu','recipe','cook','cuisine','dish',
       'pizza','salad','indian','italian','spicy','noodles','rice','bowl','burger',
       'breakfast','lunch','dinner','dessert','snack','healthy','vegan','vegetarian',
-      'gluten','halal','kosher','deal','cheap','cheapest','fast','fastest','delivery','$','$$','$$$'
+      'gluten','halal','kosher','deal','cheap','cheapest','fast','fastest','delivery','$','$$','$$$', // + add these:
+      'make','prepare','cook','recipe','ingredients','steps','how to'
+
     ];
     const looksFoodRelated = FOOD_KEYWORDS.some(k => ql.includes(k));
-    if (!looksFoodRelated) {
+    if (!looksFoodRelated && !followUpLooksFoody) {
       return "I’m here to help with food and delivery. Could you ask me about that?";
     }
 
