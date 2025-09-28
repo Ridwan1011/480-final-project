@@ -563,6 +563,39 @@ const Chat = {
 
     // Otherwise: search & recommend
     const filters = this.parseFilters(ql);
+    const noSignals =
+      (!filters.cuisines || filters.cuisines.length === 0) &&
+      !filters.price && !filters.fastest && !filters.spicy;
+
+    if (noSignals) {
+      // same logic as the fallback above, but you can just call the same code path:
+      const system = {
+        role: "system",
+        content:
+          "You are Nosh.AI, a friendly food assistant for a delivery app. " +
+          "Answer only food-related questions: restaurants, cuisines, cooking, recipes, or delivery. " +
+          "If asked about something unrelated, reply: " +
+          "'I’m here to help with food and delivery. Could you ask me about that?' " +
+          "Keep responses short, clear, and conversational."
+      };
+      const history = chatHistory.slice(-10).map(m => ({
+        role: m.role,
+        content: String(m.content).replace(/<[^>]*>/g, '')
+      }));
+      try {
+        const resp = await fetch('https://four80-final-project.onrender.com/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [system, ...history] })
+        });
+        const { text } = await resp.json();
+        return text || "I’m here for food and delivery—try asking about cuisines, restaurants, or dishes.";
+      } catch (e) {
+        console.error(e);
+        return "Couldn’t reach the assistant just now. Please try again.";
+      }
+    }
+
     const coords = getCachedLocation(); // already in your app:contentReference[oaicite:2]{index=2}
     const ranked = this.search(filters, coords);
     this.lastResults = ranked.map(x => x.r);
