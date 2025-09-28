@@ -586,7 +586,7 @@ const Chat = {
     }));
 
     try {
-      const resp = await fetch('http://localhost:8787/api/chat', {
+      const resp = await fetch('https://four80-final-project.onrender.com/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [system, ...history] })

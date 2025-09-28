@@ -9,10 +9,13 @@ app.use(express.json());
 
 app.use(cors({
   origin: [
-    /^http:\/\/localhost(:\d+)?$/,
-    /^http:\/\/127\.0\.0\.1(:\d+)?$/
+    /^https?:\/\/localhost(:\d+)?$/,
+    /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+    /^https?:\/\/.*\.onrender\.com$/,          // your backend (and frontend if you host there)
+    /^https?:\/\/ridwan1011\.github\.io$/,     // <- change to your real frontend domain
   ]
 }));
+
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -36,4 +39,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.listen(8787, () => console.log('API on http://localhost:8787'));
+const PORT = process.env.PORT || 8787;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`API listening on port ${PORT}`);
+});
