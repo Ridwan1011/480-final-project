@@ -522,6 +522,22 @@ const Chat = {
     const q = text.trim();
     const ql = q.toLowerCase();
 
+    // Greeting: respond with quick help, don't search
+    if (/^(hi|hello|hey|yo|sup|howdy)\b/.test(ql)) {
+      return "Hey! I can help with food and delivery — try “cheapest pizza”, “fastest salad”, or “spicy Indian”.";
+    }
+    // Food-only guard: if no food/delivery keywords, politely redirect
+    const FOOD_KEYWORDS = [
+      'food','eat','restaurant','order','cart','menu','recipe','cook','cuisine','dish',
+      'pizza','salad','indian','italian','spicy','noodles','rice','bowl','burger',
+      'breakfast','lunch','dinner','dessert','snack','healthy','vegan','vegetarian',
+      'gluten','halal','kosher','deal','cheap','cheapest','fast','fastest','delivery','$','$$','$$$'
+    ];
+    const looksFoodRelated = FOOD_KEYWORDS.some(k => ql.includes(k));
+    if (!looksFoodRelated) {
+      return "I’m here to help with food and delivery. Could you ask me about that?";
+    }
+
     // Clear chat
     if (ql === 'clear' || ql === 'reset') {
       clearChat();
@@ -551,14 +567,48 @@ const Chat = {
     const ranked = this.search(filters, coords);
     this.lastResults = ranked.map(x => x.r);
 
-    if (!ranked.length) return "I didn't find a great match. Try a different cuisine or budget.";
+
+    // Fallback to model (food-only scope) when no solid local result:
+    if (!ranked.length) {
+    const system = {
+      role: "system",
+      content:
+        "You are Nosh.AI, a friendly food assistant for a delivery app. " +
+        "Answer only food-related questions: restaurants, cuisines, cooking, recipes, or delivery. " +
+        "If asked about something unrelated, reply: " +
+        "'I’m here to help with food and delivery. Could you ask me about that?' " +
+        "Keep responses short, clear, and conversational."
+    };
+
+    const history = chatHistory.slice(-10).map(m => ({
+      role: m.role,
+      content: String(m.content).replace(/<[^>]*>/g, '')
+    }));
+
+    try {
+      const resp = await fetch('http://localhost:8787/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [system, ...history] })
+      });
+      const { text } = await resp.json();
+      return text || "I’m here for food and delivery—try asking about cuisines, restaurants, or dishes.";
+    } catch (e) {
+      console.error(e);
+      return "Couldn’t reach the assistant just now. Please try again.";
+    }
+  }
 
     const lines = ranked.map((x, i) => {
       const r = x.r;
       const distTxt = x.distanceMi != null ? `${x.distanceMi.toFixed(x.distanceMi < 1 ? 2 : 1)} mi` : '—';
-      const [minEta, maxEta] = (r.eta || "").split('-');
-      return `${i + 1}) ${r.name} • ${r.cuisine.join(', ')} • ${r.priceLevel} • ⭐ ${r.rating} • ${minEta ?? ''}${maxEta ? '–' + maxEta : ''} min • ${distTxt}. Try their ${r.featuredItem.name} for $${r.featuredItem.price.toFixed(2)}.`;
+      // Parse "25-35 min" safely -> "25–35 min", avoid "min min"
+      let etaTxt = r.eta || '';
+      const m = etaTxt.match(/(\d+)\s*-\s*(\d+)/);
+      if (m) etaTxt = `${m[1]}–${m[2]} min`;
+      return `${i + 1}) ${r.name} • ${r.cuisine.join(', ')} • ${r.priceLevel} • ⭐ ${r.rating} • ${etaTxt} • ${distTxt}. Try their ${r.featuredItem.name} for $${r.featuredItem.price.toFixed(2)}.`;
     });
+
 
     lines.push("Type ‘add #1’ or ‘add Margherita from Mario’s’. Say ‘view cart’ anytime.");
     return lines.join('\n');
