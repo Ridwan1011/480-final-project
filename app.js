@@ -130,6 +130,47 @@ function initMap() {
     fullscreenControl: false,
   });
 
+  // --- "Use my location" map control ---
+  const locBtn = document.createElement('button');
+  locBtn.className = 'gm-my-loc';
+  locBtn.type = 'button';
+  locBtn.innerHTML = `
+    <div style="
+      display:flex;align-items:center;gap:.5rem;
+      background:#fff;border:1px solid #E5E7EB;border-radius:9999px;
+      padding:.5rem .75rem;box-shadow:0 2px 8px rgba(0,0,0,.08);
+      font:500 13px/1.1 Inter,system-ui,Segoe UI,Roboto,sans-serif; color:#111827;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+      </svg>
+      Use my location
+    </div>
+  `;
+  locBtn.addEventListener('click', async () => {
+    try {
+      const coords = await getUserLocation();        // uses your helper
+      setUserMarker(coords);                          // drops/updates the green dot
+      map.setCenter({ lat: coords.lat, lng: coords.lng });
+      map.setZoom(14);
+
+      // If there's a current query, re-run Places near the user; else show seeds near user
+      const q = (document.getElementById('searchInput')?.value || '').trim();
+      if (q && window.searchPlaces) {
+        await window.searchPlaces(q);
+      } else {
+        addRestaurantMarkers(SEED_RESTAURANTS, coords);
+      }
+
+      showToast('success', 'Location updated ✔');
+    } catch (e) {
+      showToast('error', 'Could not access location. Allow permission and try again.');
+    }
+  });
+  // Pin to top-right
+  map.controls[google.maps.ControlPosition.TOP_RIGHT].push(locBtn);
+
   placesService = new google.maps.places.PlacesService(map);
 
   // Show restaurants
@@ -168,72 +209,83 @@ function initMap() {
   window.searchPlaces = searchPlaces;
 
   function addPlacesMarkers(results, userCoords) {
-  if (!map) return;
+    if (!map) return;
 
-  // Clear old markers
-  restaurantMarkers.forEach(m => m.setMap(null));
-  restaurantMarkers = [];
+    // Clear old markers
+    restaurantMarkers.forEach(m => m.setMap(null));
+    restaurantMarkers = [];
 
-  const bounds = new google.maps.LatLngBounds();
-  const info = new google.maps.InfoWindow();
+    const bounds = new google.maps.LatLngBounds();
+    const info = new google.maps.InfoWindow();
 
-  results.slice(0, 20).forEach(p => {
-    const pos = p.geometry?.location;
-    if (!pos) return;
+    const renderItems = []; // collect for cards
 
-    const priceLevel = typeof p.price_level === 'number'
-      ? '$$$$'.slice(0, Math.max(1, Math.min(4, p.price_level)))
-      : '$$';
-    const rating = p.rating ?? '—';
-    const eta = '20–40 min'; // demo ETA
+    results.slice(0, 20).forEach(p => {
+      const pos = p.geometry?.location;
+      if (!pos) return;
 
-    const distanceMi = userCoords ? haversineMi(userCoords, { lat: pos.lat(), lng: pos.lng() }) : null;
-    const distTxt = distanceMi != null ? `${distanceMi.toFixed(distanceMi < 1 ? 2 : 1)} mi` : '—';
+      const priceLevel = typeof p.price_level === 'number'
+        ? '$$$$'.slice(0, Math.max(1, Math.min(4, p.price_level)))
+        : '$$';
+      const rating = p.rating ?? '—';
+      const eta = '20–40 min'; // demo ETA
+      const coords = { lat: pos.lat(), lng: pos.lng() };
+      const distanceMi = userCoords ? haversineMi(userCoords, coords) : null;
 
-    const popupHtml = `
-      <div class="font-poppins text-slate">
-        <div class="font-semibold">${p.name} <span class="text-gray-500">${priceLevel}</span></div>
-        <div class="text-sm text-gray-600 mb-1">Restaurant</div>
-        <div class="text-sm text-gray-600 mb-2">⭐ ${rating} • ${eta} • ${distTxt}</div>
-        <button
-          onclick="addToCart('${(p.name || 'Restaurant').replace(/'/g, "\\'")}', 'Recommended item', 14.99)"
-          class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-1.5 px-3 rounded-xl transition-colors"
-        >
-          Add Recommended item - $14.99
-        </button>
-      </div>
-    `;
+      const photoUrl = p.photos?.[0]?.getUrl({ maxWidth: 400 }) 
+                || "https://via.placeholder.com/400x300?text=No+Image";
 
-    const marker = new google.maps.Marker({
-      map,
-      position: pos,
-      title: p.name
+      // collect for list
+      renderItems.push({
+        name: p.name,
+        priceLevel,
+        rating,
+        eta,
+        distanceMi,
+        featuredItem: { name: 'Recommended item', price: 14.99 },
+        photo: photoUrl
+      });
+
+
+      const distTxt = distanceMi != null ? `${distanceMi.toFixed(distanceMi < 1 ? 2 : 1)} mi` : '—';
+      const popupHtml = `
+        <div class="font-poppins text-slate">
+          <div class="font-semibold">${p.name} <span class="text-gray-500">${priceLevel}</span></div>
+          <div class="text-sm text-gray-600 mb-1">Restaurant</div>
+          <div class="text-sm text-gray-600 mb-2">⭐ ${rating} • ${eta} • ${distTxt}</div>
+          <button
+            onclick="addToCart('${(p.name || 'Restaurant').replace(/'/g, "\\'")}', 'Recommended item', 14.99)"
+            class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-1.5 px-3 rounded-xl transition-colors"
+          >
+            Add Recommended item - $14.99
+          </button>
+        </div>
+      `;
+
+      const marker = new google.maps.Marker({
+        map,
+        position: pos,
+        title: p.name
+      });
+
+      marker.addListener('click', () => {
+        info.close();
+        info.setContent(popupHtml);
+        info.open(map, marker);
+      });
+
+      restaurantMarkers.push(marker);
+      bounds.extend(pos);
     });
 
-    marker.addListener('click', () => {
-      info.close();
-      info.setContent(popupHtml);
-      info.open(map, marker);
-    });
+    if (restaurantMarkers.length) {
+      map.fitBounds(bounds);
+      if (userCoords) map.panTo(userCoords);
+    }
 
-    restaurantMarkers.push(marker);
-    bounds.extend(pos);
-  });
-
-  if (restaurantMarkers.length) {
-    map.fitBounds(bounds);
-    if (userCoords) map.panTo(userCoords);
+    // render the cards under the map
+    renderResultsList(renderItems);
   }
-}
-
-  // Try user location
-  getUserLocation()
-    .then(coords => {
-      setUserMarker(coords);
-      map.setCenter(coords);
-      addRestaurantMarkers(SEED_RESTAURANTS, coords);
-    })
-    .catch(() => {});
 }
 
 // expose for Google callback
@@ -259,6 +311,57 @@ function setUserMarker(coords) {
   });
 }
 
+// Renders cards under the map, sorted by distance (closest first)
+function renderResultsList(items) {
+  const list = document.getElementById('resultsList');
+  if (!list) return;
+
+  if (!items?.length) {
+    list.innerHTML = `
+      <div class="col-span-full bg-white rounded-2xl shadow-soft p-6 text-gray-600">
+        No results found. Try another search.
+      </div>`;
+    return;
+  }
+
+  // sort by distance asc; push unknowns to end
+  items.sort((a, b) => (a.distanceMi ?? Infinity) - (b.distanceMi ?? Infinity));
+
+  list.innerHTML = items.map(it => {
+    const price = it.priceLevel || '$$';
+    const rating = it.rating ?? '—';
+    const eta = it.eta || '20–40 min';
+    const dist = it.distanceMi != null
+      ? `${it.distanceMi.toFixed(it.distanceMi < 1 ? 2 : 1)} mi`
+      : '—';
+
+    const rName = (it.name || 'Restaurant').replace(/"/g, '&quot;');
+    const itemName = (it.featuredItem?.name || 'Recommended item').replace(/"/g, '&quot;');
+    const itemPrice = Number(it.featuredItem?.price ?? 14.99);
+
+    return `
+      <div class="bg-white rounded-2xl shadow-soft overflow-hidden hover:shadow-soft-lg transition-all">
+        <div  class="h-40 bg-gray-200 bg-cover bg-center"
+              style="background-image: url('${it.photo || "https://via.placeholder.com/400x300?text=No+Image"}')">
+        </div>
+
+        <div class="p-3">
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="font-poppins text-base font-bold text-slate">${rName}</h3>
+            <span class="text-slate font-medium">${price}</span>
+          </div>
+          <div class="text-sm text-gray-600 mb-3">⭐ ${rating} • ${eta} • ${dist}</div>
+          <button
+            onclick="addToCart('${rName.replace(/'/g, "\\'")}', '${itemName.replace(/'/g, "\\'")}', ${itemPrice})"
+            class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-2 px-4 rounded-xl transition-colors">
+            Add ${itemName} - $${itemPrice.toFixed(2)}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 
 function addRestaurantMarkers(restaurants, userCoords) {
   if (!map) return;
@@ -270,11 +373,23 @@ function addRestaurantMarkers(restaurants, userCoords) {
   const bounds = new google.maps.LatLngBounds();
   const info = new google.maps.InfoWindow();
 
+  const renderItems = []; // collect for cards
+
   restaurants.forEach(r => {
     const distanceMi =
       userCoords ? haversineMi(userCoords, { lat: r.lat, lng: r.lng }) : null;
     const distTxt =
       distanceMi != null ? `${distanceMi.toFixed(distanceMi < 1 ? 2 : 1)} mi` : '—';
+
+    // collect for list
+    renderItems.push({
+      name: r.name,
+      priceLevel: r.priceLevel,
+      rating: r.rating,
+      eta: r.eta,
+      distanceMi,
+      featuredItem: r.featuredItem
+    });
 
     const popupHtml = `
       <div class="font-poppins text-slate">
@@ -310,6 +425,9 @@ function addRestaurantMarkers(restaurants, userCoords) {
     map.fitBounds(bounds);
     if (userCoords) map.panTo(userCoords);
   }
+
+  // render the cards under the map
+  renderResultsList(renderItems);
 }
 
 
