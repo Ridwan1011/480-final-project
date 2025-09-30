@@ -13,6 +13,7 @@ let isSignedIn = false;
 let map;
 let userMarker;
 let restaurantMarkers = [];
+let placesService; // Google Places service handle
 
 // Seed demo restaurants (adjust coords for your city)
 const SEED_RESTAURANTS = [
@@ -129,8 +130,101 @@ function initMap() {
     fullscreenControl: false,
   });
 
+  placesService = new google.maps.places.PlacesService(map);
+
   // Show restaurants
   addRestaurantMarkers(SEED_RESTAURANTS, null);
+
+  async function searchPlaces(query) {
+    if (!map || !placesService) return;
+
+    // Prefer cached user coords if available
+    const userCoords = getCachedLocation(); // you already have this helper
+    const location = userCoords
+      ? new google.maps.LatLng(userCoords.lat, userCoords.lng)
+      : map.getCenter();
+
+    const request = {
+      query,
+      location,
+      radius: 4000, // ~2.5 miles
+      type: 'restaurant'
+    };
+
+    return new Promise((resolve, reject) => {
+      placesService.textSearch(request, (results, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !results?.length) {
+          showToast('info', 'No results found for that search.');
+          // fallback to seeds so it isn’t empty
+          addRestaurantMarkers(SEED_RESTAURANTS, userCoords || null);
+          return reject(new Error(status || 'NO_RESULTS'));
+        }
+        addPlacesMarkers(results, userCoords || null);
+        resolve(results);
+      });
+    });
+  }
+  // make available to performSearch()
+  window.searchPlaces = searchPlaces;
+
+  function addPlacesMarkers(results, userCoords) {
+  if (!map) return;
+
+  // Clear old markers
+  restaurantMarkers.forEach(m => m.setMap(null));
+  restaurantMarkers = [];
+
+  const bounds = new google.maps.LatLngBounds();
+  const info = new google.maps.InfoWindow();
+
+  results.slice(0, 20).forEach(p => {
+    const pos = p.geometry?.location;
+    if (!pos) return;
+
+    const priceLevel = typeof p.price_level === 'number'
+      ? '$$$$'.slice(0, Math.max(1, Math.min(4, p.price_level)))
+      : '$$';
+    const rating = p.rating ?? '—';
+    const eta = '20–40 min'; // demo ETA
+
+    const distanceMi = userCoords ? haversineMi(userCoords, { lat: pos.lat(), lng: pos.lng() }) : null;
+    const distTxt = distanceMi != null ? `${distanceMi.toFixed(distanceMi < 1 ? 2 : 1)} mi` : '—';
+
+    const popupHtml = `
+      <div class="font-poppins text-slate">
+        <div class="font-semibold">${p.name} <span class="text-gray-500">${priceLevel}</span></div>
+        <div class="text-sm text-gray-600 mb-1">Restaurant</div>
+        <div class="text-sm text-gray-600 mb-2">⭐ ${rating} • ${eta} • ${distTxt}</div>
+        <button
+          onclick="addToCart('${(p.name || 'Restaurant').replace(/'/g, "\\'")}', 'Recommended item', 14.99)"
+          class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-1.5 px-3 rounded-xl transition-colors"
+        >
+          Add Recommended item - $14.99
+        </button>
+      </div>
+    `;
+
+    const marker = new google.maps.Marker({
+      map,
+      position: pos,
+      title: p.name
+    });
+
+    marker.addListener('click', () => {
+      info.close();
+      info.setContent(popupHtml);
+      info.open(map, marker);
+    });
+
+    restaurantMarkers.push(marker);
+    bounds.extend(pos);
+  });
+
+  if (restaurantMarkers.length) {
+    map.fitBounds(bounds);
+    if (userCoords) map.panTo(userCoords);
+  }
+}
 
   // Try user location
   getUserLocation()
@@ -269,16 +363,24 @@ function register() {
 }
 
 // ---------------- Search ----------------
-function performSearch() {
+async function performSearch() {
   const query = document.getElementById('searchInput')?.value || '';
-  if (query.trim()) {
-    showToast('info', `Searching for "${query}"...`);
-    setTimeout(() => {
-      showPage('deals');
-      showToast('success', 'Found great matches for your search!');
-    }, 1000);
-  }
+  const q = query.trim();
+  if (!q) return;
+
+  showToast('info', `Searching for "${q}"...`);
+  showPage('deals'); // ensures the map container is visible before rendering markers
+
+  setTimeout(async () => {
+    try {
+      await searchPlaces(q);
+      showToast('success', 'Found places near you!');
+    } catch {
+      // already handled in searchPlaces
+    }
+  }, 0);
 }
+
 
 // ---------------- Cart ----------------
 function addToCart(restaurant, item, price) {
@@ -894,7 +996,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const coords = await getUserLocation();
         if (!map) initMap();
         setUserMarker(coords);
-        map.setView([coords.lat, coords.lng], 14);
+        map.setCenter({ lat: coords.lat, lng: coords.lng });
+        map.setZoom(14);
         addRestaurantMarkers(SEED_RESTAURANTS, coords);
         showToast('success', 'Location updated ✔');
       } catch (e) {
