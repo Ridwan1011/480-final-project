@@ -106,11 +106,10 @@ function getUserLocation() {
 
 function initMap() {
   const el = document.getElementById('map');
-  if (!el) return; // map not on this page
+  if (!el) return; // not on Deals page
 
-  // Only initialize once per page visit
-  if (map && map._loaded) {
-    // Still refresh markers with latest location if available
+  // If map exists, just refresh markers
+  if (map) {
     getUserLocation()
       .then(coords => {
         setUserMarker(coords);
@@ -120,44 +119,62 @@ function initMap() {
     return;
   }
 
-  // Fallback center (San Francisco)
-  map = L.map('map', { zoomControl: true }).setView([37.783, -122.41], 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+  // First-time init (fallback center: San Francisco)
+  const center = { lat: 37.783, lng: -122.41 };
+  map = new google.maps.Map(el, {
+    center,
+    zoom: 14,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+  });
 
-  // Render restaurants first (no distance yet)
+  // Show restaurants
   addRestaurantMarkers(SEED_RESTAURANTS, null);
 
-  // Try to get user location
+  // Try user location
   getUserLocation()
     .then(coords => {
       setUserMarker(coords);
-      map.setView([coords.lat, coords.lng], 14);
+      map.setCenter(coords);
       addRestaurantMarkers(SEED_RESTAURANTS, coords);
     })
-    .catch(() => {
-      // optional: showToast('info', 'Location denied. Showing default area.');
-    });
+    .catch(() => {});
 }
+
+// expose for Google callback
+window.initMap = initMap;
+
 
 function setUserMarker(coords) {
   if (!map) return;
-  if (userMarker) userMarker.remove();
-  userMarker = L.marker([coords.lat, coords.lng], { title: 'You are here' })
-    .addTo(map)
-    .bindPopup('You are here');
+  if (userMarker) userMarker.setMap(null);
+
+  userMarker = new google.maps.Marker({
+    position: { lat: coords.lat, lng: coords.lng },
+    map,
+    title: 'You are here',
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#10B981',
+      fillOpacity: 1,
+      strokeColor: '#0EA371',
+      strokeWeight: 2,
+      scale: 6
+    }
+  });
 }
+
 
 function addRestaurantMarkers(restaurants, userCoords) {
   if (!map) return;
 
   // Clear old markers
-  restaurantMarkers.forEach(m => m.remove());
+  restaurantMarkers.forEach(m => m.setMap(null));
   restaurantMarkers = [];
 
-  const group = L.featureGroup();
+  const bounds = new google.maps.LatLngBounds();
+  const info = new google.maps.InfoWindow();
 
   restaurants.forEach(r => {
     const distanceMi =
@@ -179,20 +196,28 @@ function addRestaurantMarkers(restaurants, userCoords) {
       </div>
     `;
 
-    const marker = L.marker([r.lat, r.lng], { title: r.name }).bindPopup(popupHtml, {
-      maxWidth: 260
+    const marker = new google.maps.Marker({
+      position: { lat: r.lat, lng: r.lng },
+      map,
+      title: r.name
     });
 
-    marker.addTo(map);
+    marker.addListener('click', () => {
+      info.close();
+      info.setContent(popupHtml);
+      info.open(map, marker);
+    });
+
     restaurantMarkers.push(marker);
-    group.addLayer(marker);
+    bounds.extend(marker.getPosition());
   });
 
   if (restaurants.length) {
-    map.fitBounds(group.getBounds().pad(0.2));
-    if (userCoords) map.panTo([userCoords.lat, userCoords.lng]);
+    map.fitBounds(bounds);
+    if (userCoords) map.panTo(userCoords);
   }
 }
+
 
 // ---------------- Page navigation ----------------
 function showPage(page) {
@@ -897,4 +922,6 @@ window.showToast = showToast;
 window.sendChatMessage = sendChatMessage;
 window.clearChat = clearChat;
 window.sendQuick = sendQuick;
+
+
 
