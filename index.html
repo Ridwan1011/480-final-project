@@ -3,380 +3,132 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Nosh Navigator - Find Food That Matches Your Cravings</title>
+  <title>Nosh Navigator</title>
 
   <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <script
-    defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1QvruSp5fUWeObyudaIpHZJCI5B5fFHc&libraries=places"
-  ></script>
-
-
-  <!-- Tailwind Config + CDN -->
-  <script>
-    window.tailwind = window.tailwind || {};
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            emerald: '#10B981',
-            lime: '#84CC16',
-            amber: '#F59E0B',
-            slate: '#111827'
-          },
-          fontFamily: {
-            'poppins': ['Poppins', 'sans-serif'],
-            'inter': ['Inter', 'sans-serif']
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Tailwind (for styles already used in CSS classes) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="./style.css" />
+  <!-- App styles -->
+  <link rel="stylesheet" href="./style.css"/>
 </head>
+<body class="bg-white text-[#111827] font-inter">
+  <!-- Header -->
+  <nav class="bg-white border-b border-gray-100 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-600">
+          <span class="text-xs font-bold">🍽</span>
+        </div>
+        <span class="font-poppins font-semibold text-lg">Nosh Navigator</span>
+      </div>
 
-<body class="bg-white font-inter text-slate">
-  <!-- Navigation Header -->
-  <nav class="bg-white shadow-soft sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
-          <svg width="32" height="32" viewBox="0 0 48 48" class="text-emerald">
-            <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
-            <path d="M24 8c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16S32.8 8 24 8zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12-5.4 12-12 12z" fill="currentColor"/>
-            <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-            <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <span class="font-poppins text-xl font-bold text-slate">Nosh Navigator</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <button onclick="showPage('deals')" class="text-slate hover:text-emerald transition-colors font-medium">Deals</button>
-          <button onclick="showPage('cart')" class="relative text-slate hover:text-emerald transition-colors">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="8" cy="21" r="1"/>
-              <circle cx="19" cy="21" r="1"/>
-              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-            </svg>
-            <span id="cartCount" class="absolute -top-2 -right-2 bg-emerald text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">0</span>
-          </button>
-        </div>
+      <div class="flex items-center gap-6">
+        <button id="dealsNav" class="text-sm hover:text-emerald-600 transition-colors">Deals</button>
+        <button id="cartNav" class="relative text-sm hover:text-emerald-600 transition-colors">
+          <span>Cart</span>
+          <span id="cartCount" class="absolute -top-2 -right-3 hidden bg-emerald-600 text-white text-[10px] rounded-full w-4 h-4 leading-4 text-center">0</span>
+        </button>
       </div>
     </div>
   </nav>
 
-  <!-- Home Page -->
-  <div id="homePage" class="page active">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <!-- Hero Section -->
-      <div class="text-center mb-16">
-        <h1 class="font-poppins text-4xl md:text-6xl font-bold text-slate mb-6">
+  <!-- Pages -->
+  <main>
+    <!-- Home Page -->
+    <section id="homePage" class="page active">
+      <div class="max-w-5xl mx-auto px-4 py-12">
+        <h1 class="text-4xl md:text-6xl font-poppins font-bold text-center leading-tight mb-6">
           Find food that matches<br>
-          <span class="text-emerald">your cravings.</span>
+          <span class="text-emerald-600">your cravings</span>.
         </h1>
-        <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        <p class="text-center text-gray-600 max-w-2xl mx-auto mb-8">
           Discover amazing restaurants and dishes with our smart search. Just tell us what you're craving!
         </p>
-        <!-- Search Bar -->
+
+        <!-- Search -->
         <div class="max-w-2xl mx-auto mb-12">
           <div class="relative">
-            <input 
-              type="text" 
-              placeholder="Try: 'cheap spicy noodles near me' or 'best pizza for delivery'"
-              class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-all shadow-soft"
-              id="searchInput"
-            >
-            <button onclick="performSearch()" class="absolute right-2 top-2 bg-emerald hover:bg-emerald/90 text-white p-3 rounded-xl transition-colors">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-              </svg>
+            <input id="searchInput" type="text" placeholder="Try: 'cheap spicy noodles near me' or 'best pizza for delivery'"
+                   class="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"/>
+            <button id="searchBtn" class="absolute right-2 top-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-3 py-2">
+              Search
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Sign In/Register Form -->
-      <div class="max-w-md mx-auto bg-white rounded-2xl shadow-soft-lg p-8">
-        <div class="flex mb-6">
-          <button id="signInTab" onclick="switchTab('signIn')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-emerald text-emerald">Sign In</button>
-          <button id="registerTab" onclick="switchTab('register')" class="flex-1 py-2 px-4 text-center font-medium border-b-2 border-gray-200 text-gray-500 hover:text-slate transition-colors">Register</button>
-        </div>
-
-        <!-- Sign In Form -->
-        <form id="signInForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Email</label>
-            <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
+        <!-- Auth card -->
+        <div class="max-w-xl mx-auto bg-white shadow-soft rounded-2xl p-6">
+          <div class="flex border-b mb-5">
+            <button id="signInTab" class="flex-1 text-center py-2 border-b-2 border-emerald-600 font-medium">Sign In</button>
+            <button id="registerTab" class="flex-1 text-center py-2 text-gray-500">Register</button>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Password</label>
-            <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-          </div>
-          <button type="button" onclick="signIn()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Sign In</button>
-        </form>
 
-        <!-- Register Form -->
-        <form id="registerForm" class="space-y-4 hidden">
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Full Name</label>
-            <input type="text" placeholder="John Doe" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Email</label>
-            <input type="email" placeholder="your@email.com" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Password</label>
-            <input type="password" placeholder="••••••••" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate mb-2">Delivery Address</label>
-            <input type="text" placeholder="123 Main St, City, State" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors">
-          </div>
-          <button type="button" onclick="register()" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Create Account</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Deals Page -->
-  <div id="dealsPage" class="page">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Best Deals Near You</h1>
-      
-      <!-- Filter Bar -->
-      <div class="bg-white rounded-2xl shadow-soft p-6 mb-8">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-            <option>All Cuisines</option>
-            <option>Italian</option>
-            <option>Asian</option>
-            <option>Mexican</option>
-            <option>American</option>
-          </select>
-          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-            <option>Any Budget</option>
-            <option>$ Budget</option>
-            <option>$$ Moderate</option>
-            <option>$$$ Premium</option>
-          </select>
-          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-            <option>Any Distance</option>
-            <option>Under 1 mile</option>
-            <option>Under 3 miles</option>
-            <option>Under 5 miles</option>
-          </select>
-          <select class="px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-emerald focus:border-emerald outline-none transition-colors bg-white">
-            <option>Sort by: Best Match</option>
-            <option>Cheapest First</option>
-            <option>Fastest Delivery</option>
-            <option>Highest Rated</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Location toolbar -->
-<div class="flex items-center justify-between mb-4">
-  <p class="text-gray-600 text-sm">Tip: enable location for closer results.</p>
-  <button id="useLocationBtn"
-    class="bg-emerald hover:bg-emerald/90 text-white text-sm font-medium py-2 px-4 rounded-xl transition-colors">
-    Use my location
-  </button>
-</div>
-
-<!-- Interactive Map -->
-<div id="map" class="rounded-2xl shadow-soft mb-8"></div>
-
-
-      <!-- Dynamic Results List -->
-      <div id="resultsList" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </div>
-  </div>
-
-  <!-- Cart Page -->
-  <div id="cartPage" class="page">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="font-poppins text-3xl font-bold text-slate mb-8">Your Order</h1>
-      
-      <div class="grid lg:grid-cols-3 gap-8">
-        <!-- Cart Items -->
-        <div class="lg:col-span-2">
-          <!-- Address Card -->
-          <div class="bg-white rounded-2xl shadow-soft p-6 mb-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-poppins text-lg font-semibold text-slate">Delivery Address</h3>
-              <button class="text-emerald hover:text-emerald/80 font-medium transition-colors">Edit</button>
+          <!-- Sign In -->
+          <form id="signInForm" class="space-y-4">
+            <div>
+              <label class="block text-sm mb-1">Email</label>
+              <input type="email" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="your@email.com"/>
             </div>
-            <div class="flex items-start gap-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald mt-1">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              <div>
-                <p class="font-medium text-slate">123 Main Street</p>
-                <p class="text-gray-600">Apartment 4B, San Francisco, CA 94102</p>
-                <p class="text-sm text-gray-500 mt-1">Estimated delivery: 25-35 minutes</p>
-              </div>
+            <div>
+              <label class="block text-sm mb-1">Password</label>
+              <input type="password" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="••••••••"/>
             </div>
-          </div>
+            <button type="button" id="signInBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3">Sign In</button>
+          </form>
 
-          <!-- Cart Items -->
-          <div class="space-y-4" id="cartItems"></div>
-
-          <!-- Empty Cart Message -->
-          <div id="emptyCart" class="bg-white rounded-2xl shadow-soft p-12 text-center">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400 mx-auto mb-4">
-              <circle cx="8" cy="21" r="1"/>
-              <circle cx="19" cy="21" r="1"/>
-              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-            </svg>
-            <h3 class="font-poppins text-xl font-semibold text-slate mb-2">Your cart is empty</h3>
-            <p class="text-gray-600 mb-6">Add some delicious items from our restaurants!</p>
-            <button onclick="showPage('deals')" class="bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Browse Restaurants</button>
-          </div>
-        </div>
-
-        <!-- Order Summary -->
-        <div class="lg:col-span-1">
-          <div class="bg-white rounded-2xl shadow-soft p-6 sticky top-24">
-            <h3 class="font-poppins text-lg font-semibold text-slate mb-6">Order Summary</h3>
-            <div class="space-y-3 mb-6">
-              <div class="flex justify-between">
-                <span class="text-gray-600">Subtotal</span>
-                <span id="subtotal">$0.00</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Delivery Fee</span>
-                <span>$2.99</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Tax</span>
-                <span id="tax">$0.00</span>
-              </div>
-              <hr class="border-gray-200">
-              <div class="flex justify-between font-semibold text-lg">
-                <span class="text-slate">Total</span>
-                <span id="total" class="text-slate">$2.99</span>
-              </div>
+          <!-- Register -->
+          <form id="registerForm" class="space-y-4 hidden">
+            <div>
+              <label class="block text-sm mb-1">Full Name</label>
+              <input type="text" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="John Doe"/>
             </div>
-            <button onclick="processPayment()" id="payButton" class="w-full bg-emerald hover:bg-emerald/90 text-white font-medium py-4 px-6 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              Pay (Demo)
-            </button>
-            <p class="text-xs text-gray-500 text-center mt-3">This is a demo payment. No actual charges will be made.</p>
-          </div>
+            <div>
+              <label class="block text-sm mb-1">Email</label>
+              <input type="email" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="your@email.com"/>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">Password</label>
+              <input type="password" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Create a password"/>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">Delivery Address</label>
+              <input type="text" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="123 Main St"/>
+            </div>
+            <button type="button" id="registerBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3">Create Account</button>
+          </form>
         </div>
+      </div>
+    </section>
+
+    <!-- Deals Page -->
+    <section id="dealsPage" class="page hidden">
+      <div class="max-w-6xl mx-auto px-4 py-8">
+        <h2 class="font-poppins text-3xl font-bold mb-6">Best Deals Near You</h2>
+        <div id="map" class="w-full h-[360px] rounded-2xl border border-gray-200 mb-6"></div>
+        <div id="resultsList" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Chat (simple local demo) -->
+  <div id="chatWidget" class="fixed bottom-5 right-5 z-50">
+    <button id="chatLauncher" class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full w-12 h-12 shadow-soft">💬</button>
+    <div id="chatPanel" class="hidden w-80 bg-white rounded-2xl shadow-soft overflow-hidden absolute bottom-16 right-0">
+      <div class="px-4 py-3 bg-emerald-100 text-emerald-700 font-medium">Nosh.AI</div>
+      <div id="chatMessages" class="h-64 overflow-y-auto p-3 text-sm space-y-2"></div>
+      <div class="p-3 border-t flex gap-2">
+        <input id="chatInput" class="flex-1 border rounded-xl px-3 py-2 outline-none" placeholder="Ask about pizza, salad…"/>
+        <button id="chatSend" class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-3">Send</button>
       </div>
     </div>
   </div>
 
-  <!-- Confirmation Page -->
-  <div id="confirmationPage" class="page">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-      <div class="bg-white rounded-2xl shadow-soft-lg p-12">
-        <div class="w-24 h-24 bg-emerald/10 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald animate-bounce-slow">
-            <polyline points="20,6 9,17 4,12"/>
-          </svg>
-        </div>
-        <h1 class="font-poppins text-3xl font-bold text-slate mb-4">Order Confirmed!</h1>
-        <p class="text-gray-600 mb-6">Thank you for your order. We're preparing your delicious meal!</p>
-        <div class="bg-gray-50 rounded-2xl p-6 mb-8">
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-gray-600">Order Number</span>
-            <span class="font-poppins font-semibold text-slate" id="orderNumber">#NS-2024-001</span>
-          </div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-gray-600">Estimated Delivery</span>
-            <span class="font-medium text-slate">25-35 minutes</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600">Total Paid</span>
-            <span class="font-poppins font-bold text-emerald text-lg" id="paidAmount">$0.00</span>
-          </div>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-4">
-          <button onclick="trackOrder()" class="flex-1 border-2 border-emerald text-emerald hover:bg-emerald hover:text-white font-medium py-3 px-6 rounded-2xl transition-colors">Track Order</button>
-          <button onclick="reorder()" class="flex-1 bg-emerald hover:bg-emerald/90 text-white font-medium py-3 px-6 rounded-2xl transition-colors">Re-order</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Chatbot -->
-  <div id="chatWidget" class="fixed bottom-6 right-6 z-[9999]">
-    <button id="chatLauncher" onclick="event.stopPropagation(); toggleChatbot()"
-          class="bg-emerald hover:bg-emerald/90 text-white p-4 rounded-full shadow-soft-lg chatbot-bubble transition-transform">
-      <svg width="24" height="24" viewBox="0 0 48 48" class="text-white">
-        <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.2"/>
-        <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-        <path d="M18 20h12M20 24h8M22 28h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </button>
-
-  <div id="chatbotBubble" class="absolute bottom-16 right-0 bg-white rounded-2xl shadow-soft-lg w-[22rem] overflow-hidden"
-       aria-hidden="true">
-    <!-- Header -->
-    <div class="px-4 py-3 bg-emerald-400 border-b border-emerald-500 text-slate flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 bg-emerald/10 rounded-full flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 48 48" class="text-emerald">
-           <path d="M24 12l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="currentColor"/>
-          </svg>
-        </div>
-        <div>
-          <p class="font-medium leading-tight text-slate">Nosh.AI</p>
-          <p class="text-gray-500 text-xs leading-tight">Assistant Online</p>
-        </div>
-      </div>
-      <button onclick="toggleChatbot()" 
-              class="rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors p-1.5">
-        <svg width="16" height="16" viewBox="0 0 24 24" class="text-slate">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Messages -->
-    <div id="chatMessages" class="h-72 overflow-y-auto px-3 py-3 space-y-2 custom-scrollbar bg-white"></div>
-
-    <!-- Quick chips -->
-    <div class="px-3 pb-2 flex flex-wrap gap-2">
-      <button class="chip" onclick="sendQuick('cheap pizza')">Cheap pizza</button>
-      <button class="chip" onclick="sendQuick('fastest salad')">Fastest salad</button>
-      <button class="chip" onclick="sendQuick('spicy indian')">Spicy Indian</button>
-      <button class="chip" onclick="sendQuick('view cart')">View cart</button>
-      <button class="chip" onclick="clearChat()">Clear</button>
-    </div>
-
-    <!-- Input -->
-    <div class="p-3 border-t border-gray-100 bg-white">
-      <div class="flex items-center gap-2 rounded-2xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-emerald focus-within:border-emerald">
-        <input id="chatInput" type="text" placeholder="Ask about deals, pizza, etc…"
-              class="flex-1 outline-none bg-transparent text-slate placeholder:text-gray-400"/>
-        <button id="chatSendBtn" class="send-btn" onclick="sendChatMessage()">
-          <svg width="18" height="18" viewBox="0 0 24 24">
-            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
-  <!-- Toast Container -->
-  <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
-
-  
-
-
-  <!-- App JS -->
-  <script defer src="./app.js"></script>
+  <!-- Google Maps (replace with your live key already set in app.js init) -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1QvruSp5fUWeObyudaIpHZJCI5B5fFHc&libraries=places"></script>
+  <!-- App logic -->
+  <script src="./app.js"></script>
 </body>
 </html>
